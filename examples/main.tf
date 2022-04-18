@@ -2,7 +2,7 @@ terraform {
   required_providers {
     maas = {
       source = "mc-b/lernmaas"
-      version = "0.0.3"
+      version = "1.0.1"
     }
   }
 }
