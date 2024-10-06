@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasDnsDomain() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS DNS domains.",
 		CreateContext: resourceDnsDomainCreate,
 		ReadContext:   resourceDnsDomainRead,
 		UpdateContext: resourceDnsDomainUpdate,
 		DeleteContext: resourceDnsDomainDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-				client := m.(*client.Client)
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				client := meta.(*client.Client)
 				domain, err := getDomain(client, d.Id())
 				if err != nil {
 					return nil, err
@@ -39,30 +40,34 @@ func resourceMaasDnsDomain() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"ttl": {
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
 			"authoritative": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Boolean value indicating if the new DNS domain is authoritative. Defaults to `false`.",
 			},
 			"is_default": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Boolean value indicating if the new DNS domain will be set as the default in the MAAS environment. Defaults to `false`.",
+			},
+			"name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The name of the new DNS domain.",
+			},
+			"ttl": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "The default TTL for the new DNS domain.",
 			},
 		},
 	}
 }
 
-func resourceDnsDomainCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsDomainCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	domain, err := client.Domains.Create(getDomainParams(d))
 	if err != nil {
@@ -70,11 +75,11 @@ func resourceDnsDomainCreate(ctx context.Context, d *schema.ResourceData, m inte
 	}
 	d.SetId(fmt.Sprintf("%v", domain.ID))
 
-	return resourceDnsDomainUpdate(ctx, d, m)
+	return resourceDnsDomainUpdate(ctx, d, meta)
 }
 
-func resourceDnsDomainRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsDomainRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -87,8 +92,8 @@ func resourceDnsDomainRead(ctx context.Context, d *schema.ResourceData, m interf
 	return nil
 }
 
-func resourceDnsDomainUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsDomainUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -104,11 +109,11 @@ func resourceDnsDomainUpdate(ctx context.Context, d *schema.ResourceData, m inte
 		}
 	}
 
-	return resourceDnsDomainRead(ctx, d, m)
+	return resourceDnsDomainRead(ctx, d, meta)
 }
 
-func resourceDnsDomainDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsDomainDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {

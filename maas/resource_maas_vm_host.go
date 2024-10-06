@@ -2,15 +2,19 @@ package maas
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
+	"github.com/juju/gomaasapi/v2"
 )
 
 var (
@@ -22,13 +26,14 @@ var (
 
 func resourceMaasVMHost() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS VM hosts.",
 		CreateContext: resourceVMHostCreate,
 		ReadContext:   resourceVMHostRead,
 		UpdateContext: resourceVMHostUpdate,
 		DeleteContext: resourceVMHostDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-				client := m.(*client.Client)
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				client := meta.(*client.Client)
 				vmHost, err := getVMHost(client, d.Id())
 				if err != nil {
 					return nil, err
@@ -58,11 +63,17 @@ func resourceMaasVMHost() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"type": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"lxd", "virsh"}, false)),
+			"cpu_over_commit_ratio": {
+				Type:        schema.TypeFloat,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host CPU overcommit ratio. This is computed if it's not set.",
+			},
+			"default_macvlan_mode": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host default macvlan mode. Supported values are: `bridge`, `passthru`, `private`, `vepa`. This is computed if it's not set.",
 			},
 			"machine": {
 				Type:          schema.TypeString,
@@ -70,87 +81,100 @@ func resourceMaasVMHost() *schema.Resource {
 				ForceNew:      true,
 				ExactlyOneOf:  vmHostSources,
 				ConflictsWith: []string{"power_address", "power_user", "power_pass"},
+				Description:   "The identifier (hostname, FQDN or system ID) of a registered ready MAAS machine. This is going to be deployed and registered as a new VM host. This argument conflicts with: `power_address`, `power_user`, `power_pass`.",
+			},
+			"memory_over_commit_ratio": {
+				Type:        schema.TypeFloat,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host RAM memory overcommit ratio. This is computed if it's not set.",
+			},
+			"name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host name. This is computed if it's not set.",
+			},
+			"pool": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host pool name. This is computed if it's not set.",
 			},
 			"power_address": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				ExactlyOneOf:  vmHostSources,
 				ConflictsWith: []string{"machine"},
-			},
-			"power_user": {
-				Type:          schema.TypeString,
-				Optional:      true,
-				ConflictsWith: []string{"machine"},
+				Description:   "Address that gives MAAS access to the VM host power control. For example: `qemu+ssh://172.16.99.2/system`. The address given here must reachable by the MAAS server. It can't be set if `machine` argument is used.",
 			},
 			"power_pass": {
 				Type:          schema.TypeString,
 				Optional:      true,
 				Sensitive:     true,
 				ConflictsWith: []string{"machine"},
+				Description:   "User password to use for power control of the VM host. Cannot be set if `machine` parameter is used.",
 			},
-			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+			"power_user": {
+				Type:          schema.TypeString,
+				Optional:      true,
+				ConflictsWith: []string{"machine"},
+				Description:   "User name to use for power control of the VM host. Cannot be set if `machine` parameter is used.",
 			},
-			"zone": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+			"resources_cores_total": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total number of CPU cores.",
 			},
-			"pool": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+			"resources_local_storage_total": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total local storage (in bytes).",
+			},
+			"resources_memory_total": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total RAM memory (in MB).",
 			},
 			"tags": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				Computed: true,
+				Type:        schema.TypeSet,
+				Optional:    true,
+				Computed:    true,
+				Description: "A set of tag names to assign to the new VM host. This is computed if it's not set.",
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
 			},
-			"cpu_over_commit_ratio": {
-				Type:     schema.TypeFloat,
-				Optional: true,
-				Computed: true,
+			"type": {
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"lxd", "virsh"}, false)),
+				Description:      "The VM host type. Supported values are: `lxd`, `virsh`.",
 			},
-			"memory_over_commit_ratio": {
-				Type:     schema.TypeFloat,
-				Optional: true,
-				Computed: true,
+			"zone": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The new VM host zone name. This is computed if it's not set.",
 			},
-			"default_macvlan_mode": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-			"resources_cores_total": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"resources_memory_total": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"resources_local_storage_total": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
+		},
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(30 * time.Minute),
+			Delete: schema.DefaultTimeout(30 * time.Minute),
 		},
 	}
 }
 
-func resourceVMHostCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVMHostCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Create VM host
 	var vmHost *entity.VMHost
 	var err error
 	if p, ok := d.GetOk("machine"); ok {
 		// Deploy machine, and register it as VM host
-		vmHost, err = deployMachineAsVMHost(ctx, client, p.(string), d.Get("type").(string))
+		vmHost, err = deployMachineAsVMHost(ctx, client, p.(string), d.Get("type").(string), d.Timeout(schema.TimeoutCreate))
 		if err != nil {
 			return diag.FromErr(err)
 		}
@@ -165,11 +189,11 @@ func resourceVMHostCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	d.SetId(fmt.Sprintf("%v", vmHost.ID))
 
 	// Return updated VM host
-	return resourceVMHostUpdate(ctx, d, m)
+	return resourceVMHostUpdate(ctx, d, meta)
 }
 
-func resourceVMHostRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVMHostRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Get VM host details
 	id, err := strconv.Atoi(d.Id())
@@ -201,30 +225,26 @@ func resourceVMHostRead(ctx context.Context, d *schema.ResourceData, m interface
 	return nil
 }
 
-func resourceVMHostUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVMHostUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Get the VM host
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	vmHost, err := client.VMHost.Get(id)
-	if err != nil {
-		return diag.FromErr(err)
-	}
 
 	// Update VM host options
-	_, err = client.VMHost.Update(vmHost.ID, getVMHostParams(d))
+	_, err = client.VMHost.Update(id, getVMHostParams(d))
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	return resourceVMHostRead(ctx, d, m)
+	return resourceVMHostRead(ctx, d, meta)
 }
 
-func resourceVMHostDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVMHostDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Delete VM host
 	id, err := strconv.Atoi(d.Id())
@@ -240,18 +260,25 @@ func resourceVMHostDelete(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	// If the VM host was deployed from a machine, release the machine.
-	if vmHost.Host.SystemID != "" {
-		// Release machine
-		err = client.Machines.Release([]string{vmHost.Host.SystemID}, "Released by Terraform")
-		if err != nil {
-			return diag.FromErr(err)
+	// Check if VM host was linked to a dynamic machine and if yes, return
+	// Dynamic machines are deleted by MAAS when their VM hosts are deleted.
+	// This information is not directly available from the API.
+	_, err = client.Machine.Get(vmHost.Host.SystemID)
+	if err, ok := gomaasapi.GetServerError(err); ok {
+		if err.StatusCode == http.StatusNotFound {
+			return nil
 		}
-		// Wait machine to be released
-		_, err = waitForMachineStatus(ctx, client, vmHost.Host.SystemID, []string{"Releasing"}, []string{"Ready"})
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	}
+
+	// VM host was deployed from a machine, so release the machine.
+	err = client.Machines.Release([]string{vmHost.Host.SystemID}, "Released by Terraform")
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	// Wait machine to be released
+	_, err = waitForMachineStatus(ctx, client, vmHost.Host.SystemID, []string{"Releasing"}, []string{"Ready"}, d.Timeout(schema.TimeoutDelete))
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	return nil
@@ -273,7 +300,7 @@ func getVMHostParams(d *schema.ResourceData) *entity.VMHostParams {
 	}
 }
 
-func deployMachineAsVMHost(ctx context.Context, client *client.Client, machineIdentifier string, vmHostType string) (*entity.VMHost, error) {
+func deployMachineAsVMHost(ctx context.Context, client *client.Client, machineIdentifier string, vmHostType string, maxTimeout time.Duration) (*entity.VMHost, error) {
 	// Find machine
 	machine, err := getMachine(client, machineIdentifier)
 	if err != nil {
@@ -287,9 +314,29 @@ func deployMachineAsVMHost(ctx context.Context, client *client.Client, machineId
 		return nil, err
 	}
 
+	// Get Default OS and series
+	var defaultOsystem string
+	defaultOsystemBytes, err := client.MAASServer.Get("default_osystem")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(defaultOsystemBytes, &defaultOsystem)
+	if err != nil {
+		return nil, err
+	}
+	var defaultSeries string
+	defaultSeriesBytes, err := client.MAASServer.Get("default_distro_series")
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(defaultSeriesBytes, &defaultSeries)
+	if err != nil {
+		return nil, err
+	}
+
 	// Deploy machine
 	deployParams := entity.MachineDeployParams{
-		DistroSeries:   "focal",
+		DistroSeries:   fmt.Sprintf("%s/%s", defaultOsystem, defaultSeries),
 		InstallKVM:     (vmHostType == "virsh"),
 		RegisterVMHost: (vmHostType == "lxd"),
 	}
@@ -299,7 +346,7 @@ func deployMachineAsVMHost(ctx context.Context, client *client.Client, machineId
 	}
 
 	// Wait for MAAS machine to be deployed
-	machine, err = waitForMachineStatus(ctx, client, machine.SystemID, []string{"Deploying"}, []string{"Deployed"})
+	machine, err = waitForMachineStatus(ctx, client, machine.SystemID, []string{"Deploying"}, []string{"Deployed"}, maxTimeout)
 	if err != nil {
 		return nil, err
 	}

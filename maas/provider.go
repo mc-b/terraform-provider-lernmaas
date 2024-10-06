@@ -30,14 +30,29 @@ func Provider() *schema.Provider {
 				Default:     "2.0",
 				Description: "The MAAS API version (default 2.0)",
 			},
+			"tls_ca_cert_path": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Certificate CA bundle path to use to verify the MAAS certificate.",
+				Default:     os.Getenv("MAAS_API_CACERT"),
+			},
+			"tls_insecure_skip_verify": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     "false",
+				Description: "Skip TLS certificate verification.",
+			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
+			"maas_device":                     resourceMaasDevice(),
 			"maas_instance":                   resourceMaasInstance(),
-			"maas_vm_instance":                resourceMaasVMInstance(),
 			"maas_vm_host":                    resourceMaasVMHost(),
 			"maas_vm_host_machine":            resourceMaasVMHostMachine(),
 			"maas_machine":                    resourceMaasMachine(),
+			"maas_network_interface_bridge":   resourceMaasNetworkInterfaceBridge(),
+			"maas_network_interface_bond":     resourceMaasNetworkInterfaceBond(),
 			"maas_network_interface_physical": resourceMaasNetworkInterfacePhysical(),
+			"maas_network_interface_vlan":     resourceMaasNetworkInterfaceVlan(),
 			"maas_network_interface_link":     resourceMaasNetworkInterfaceLink(),
 			"maas_fabric":                     resourceMaasFabric(),
 			"maas_vlan":                       resourceMaasVlan(),
@@ -49,14 +64,17 @@ func Provider() *schema.Provider {
 			"maas_block_device":               resourceMaasBlockDevice(),
 			"maas_tag":                        resourceMaasTag(),
 			"maas_user":                       resourceMaasUser(),
+			"maas_resource_pool":              resourceMaasResourcePool(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
-			"maas_fabric":   dataSourceMaasFabric(),
-			"maas_vlan":     dataSourceMaasVlan(),
-			"maas_subnet":   dataSourceMaasSubnet(),
-			"maas_machines": dataSourceMaasMachines(),
-			"maas_vm_host":  dataSourceMaasVMHost(),
-			"maas_vm_hosts": dataSourceMaasVMHosts(),
+			"maas_fabric":                     dataSourceMaasFabric(),
+			"maas_vlan":                       dataSourceMaasVlan(),
+			"maas_subnet":                     dataSourceMaasSubnet(),
+			"maas_machine":                    dataSourceMaasMachine(),
+			"maas_network_interface_physical": dataSourceMaasNetworkInterfacePhysical(),
+			"maas_device":                     dataSourceMaasDevice(),
+			"maas_resource_pool":              dataSourceMaasResourcePool(),
+			"maas_rack_controller":            dataSourceMaasRackController(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
@@ -72,9 +90,11 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		return nil, diag.FromErr(fmt.Errorf("MAAS API URL cannot be empty"))
 	}
 	config := Config{
-		APIKey:     apiKey,
-		APIURL:     apiURL,
-		ApiVersion: d.Get("api_version").(string),
+		APIKey:                apiKey,
+		APIURL:                apiURL,
+		ApiVersion:            d.Get("api_version").(string),
+		TLSCACertPath:         d.Get("tls_ca_cert_path").(string),
+		TLSInsecureSkipVerify: d.Get("tls_insecure_skip_verify").(bool),
 	}
 
 	// Warning or errors can be collected in a slice type

@@ -5,47 +5,27 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasNetworkInterfaceLink() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage network configuration on a network interface.",
 		CreateContext: resourceNetworkInterfaceLinkCreate,
 		ReadContext:   resourceNetworkInterfaceLinkRead,
 		UpdateContext: resourceNetworkInterfaceLinkUpdate,
 		DeleteContext: resourceNetworkInterfaceLinkDelete,
 
 		Schema: map[string]*schema.Schema{
-			"machine": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"network_interface": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"subnet": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"mode": {
-				Type:             schema.TypeString,
-				Optional:         true,
-				ForceNew:         true,
-				Default:          "AUTO",
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"AUTO", "DHCP", "STATIC", "LINK_UP"}, false)),
-			},
 			"default_gateway": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Boolean value. When enabled, it sets the subnet gateway IP address as the default gateway for the machine the interface belongs to. This option can only be used with the `AUTO` and `STATIC` modes. Defaults to `false`.",
 			},
 			"ip_address": {
 				Type:             schema.TypeString,
@@ -53,13 +33,40 @@ func resourceMaasNetworkInterfaceLink() *schema.Resource {
 				ForceNew:         true,
 				Computed:         true,
 				ValidateDiagFunc: validation.ToDiagFunc(validation.IsIPAddress),
+				Description:      "Valid IP address (from the given subnet) to be configured on the network interface. Only used when `mode` is set to `STATIC`.",
+			},
+			"machine": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The identifier (system ID, hostname, or FQDN) of the machine with the network interface.",
+			},
+			"mode": {
+				Type:             schema.TypeString,
+				Optional:         true,
+				ForceNew:         true,
+				Default:          "AUTO",
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice([]string{"AUTO", "DHCP", "STATIC", "LINK_UP"}, false)),
+				Description:      "Connection mode to subnet. It defaults to `AUTO`. Valid options are:\n\t* `AUTO` - Random static IP address from the subnet.\n\t* `DHCP` - IP address from the DHCP on the given subnet.\n\t* `STATIC` - Use `ip_address` as static IP address.\n\t* `LINK_UP` - Bring the interface up only on the given subnet. No IP address will be assigned.",
+			},
+			"network_interface": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The identifier (MAC address, name, or ID) of the network interface.",
+			},
+			"subnet": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The identifier (CIDR or ID) of the subnet to be connected.",
 			},
 		},
 	}
 }
 
-func resourceNetworkInterfaceLinkCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfaceLinkCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Create network interface link
 	machine, err := getMachine(client, d.Get("machine").(string))
@@ -74,7 +81,7 @@ func resourceNetworkInterfaceLinkCreate(ctx context.Context, d *schema.ResourceD
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	link, err := createNetworkInterfaceLink(client, machine.SystemID, networkInterface.ID, getNetworkInterfaceLinkParams(d, subnet.ID))
+	link, err := createNetworkInterfaceLink(client, machine.SystemID, networkInterface, getNetworkInterfaceLinkParams(d, subnet.ID))
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -82,11 +89,11 @@ func resourceNetworkInterfaceLinkCreate(ctx context.Context, d *schema.ResourceD
 	// Save the resource id
 	d.SetId(fmt.Sprintf("%v", link.ID))
 
-	return resourceNetworkInterfaceLinkUpdate(ctx, d, m)
+	return resourceNetworkInterfaceLinkRead(ctx, d, meta)
 }
 
-func resourceNetworkInterfaceLinkRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfaceLinkRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Get params for the read operation
 	linkID, err := strconv.Atoi(d.Id())
@@ -116,8 +123,8 @@ func resourceNetworkInterfaceLinkRead(ctx context.Context, d *schema.ResourceDat
 	return nil
 }
 
-func resourceNetworkInterfaceLinkUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfaceLinkUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Get params for the update operation
 	linkID, err := strconv.Atoi(d.Id())
@@ -143,11 +150,11 @@ func resourceNetworkInterfaceLinkUpdate(ctx context.Context, d *schema.ResourceD
 		}
 	}
 
-	return resourceNetworkInterfaceLinkRead(ctx, d, m)
+	return resourceNetworkInterfaceLinkRead(ctx, d, meta)
 }
 
-func resourceNetworkInterfaceLinkDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfaceLinkDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Get params for the delete operation
 	linkID, err := strconv.Atoi(d.Id())
@@ -180,14 +187,19 @@ func getNetworkInterfaceLinkParams(d *schema.ResourceData, subnetID int) *entity
 	}
 }
 
-func createNetworkInterfaceLink(client *client.Client, machineSystemID string, networkInterfaceID int, params *entity.NetworkInterfaceLinkParams) (*entity.NetworkInterfaceLink, error) {
+func createNetworkInterfaceLink(client *client.Client, machineSystemID string, networkInterface *entity.NetworkInterface, params *entity.NetworkInterfaceLinkParams) (*entity.NetworkInterfaceLink, error) {
 	// Clear existing links
-	_, err := client.NetworkInterface.Disconnect(machineSystemID, networkInterfaceID)
-	if err != nil {
-		return nil, err
+	// VLAN type interfaces are excluded since this action is not allowed by MAAS itself:
+	// <https://github.com/canonical/maas/blob/master/src/maasserver/models/interface.py#L2001-L2006>
+	if networkInterface.Type != "vlan" {
+		_, err := client.NetworkInterface.Disconnect(machineSystemID, networkInterface.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	// Create new link
-	networkInterface, err := client.NetworkInterface.LinkSubnet(machineSystemID, networkInterfaceID, params)
+	networkInterface, err := client.NetworkInterface.LinkSubnet(machineSystemID, networkInterface.ID, params)
 	if err != nil {
 		return nil, err
 	}

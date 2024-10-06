@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/mail"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/gocty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func base64Encode(data []byte) string {
@@ -109,6 +109,11 @@ func setTerraformState(d *schema.ResourceData, tfState map[string]interface{}) e
 		delete(tfState, "id")
 	}
 	for k, v := range tfState {
+		// NOTE: Ignore R001. We have this method being invoked in multiple places,
+		// however key values are actually string literals. Consider this a false positive.
+		// https://github.com/bflad/tfproviderlint/tree/main/passes/R001
+		//
+		//lintignore:R001
 		if err := d.Set(k, v); err != nil {
 			return err
 		}

@@ -4,20 +4,21 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasUser() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS users.",
 		CreateContext: resourceUserCreate,
 		ReadContext:   resourceUserRead,
 		DeleteContext: resourceUserDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-				client := m.(*client.Client)
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				client := meta.(*client.Client)
 				user, err := getUser(client, d.Id())
 				if err != nil {
 					return nil, err
@@ -36,35 +37,39 @@ func resourceMaasUser() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"name": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
-			"password": {
-				Type:      schema.TypeString,
-				Required:  true,
-				Sensitive: true,
-				ForceNew:  true,
-			},
 			"email": {
 				Type:             schema.TypeString,
 				Required:         true,
 				ForceNew:         true,
 				ValidateDiagFunc: isEmailAddress,
+				Description:      "The user e-mail address.",
 			},
 			"is_admin": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  false,
-				ForceNew: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				ForceNew:    true,
+				Description: "Boolean value indicating if the user is a MAAS administrator. Defaults to `false`.",
+			},
+			"name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The user name.",
+			},
+			"password": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Sensitive:   true,
+				ForceNew:    true,
+				Description: "The user password.",
 			},
 		},
 	}
 }
 
-func resourceUserCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceUserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	user, err := client.Users.Create(getUserParams(d))
 	if err != nil {
@@ -75,8 +80,8 @@ func resourceUserCreate(ctx context.Context, d *schema.ResourceData, m interface
 	return nil
 }
 
-func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceUserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	if _, err := client.User.Get(d.Id()); err != nil {
 		return diag.FromErr(err)
@@ -85,8 +90,8 @@ func resourceUserRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-func resourceUserDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceUserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	if err := client.User.Delete(d.Id()); err != nil {
 		return diag.FromErr(err)

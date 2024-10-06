@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 var (
@@ -19,12 +19,13 @@ var (
 
 func resourceMaasDnsRecord() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS DNS domain records.",
 		CreateContext: resourceDnsRecordCreate,
 		ReadContext:   resourceDnsRecordRead,
 		UpdateContext: resourceDnsRecordUpdate,
 		DeleteContext: resourceDnsRecordDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 				idParts := strings.Split(d.Id(), ":")
 				if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
 					return nil, fmt.Errorf("unexpected format of ID (%q), expected TYPE:IDENTIFIER", d.Id())
@@ -33,7 +34,7 @@ func resourceMaasDnsRecord() *schema.Resource {
 				if _, errors := validation.StringInSlice(validDnsRecordTypes, false)(resourceType, "type"); len(errors) > 0 {
 					return nil, errors[0]
 				}
-				client := m.(*client.Client)
+				client := meta.(*client.Client)
 				resourceIdentifier := idParts[1]
 				var tfState map[string]interface{}
 				if resourceType == "A/AAAA" {
@@ -73,42 +74,48 @@ func resourceMaasDnsRecord() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"type": {
-				Type:             schema.TypeString,
-				Required:         true,
-				ForceNew:         true,
-				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validDnsRecordTypes, false)),
-			},
 			"data": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The data set for the new DNS record.",
+			},
+			"domain": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"name"},
+				Description:  "The domain of the new DNS record. Used in conjunction with `name`. It conflicts with `fqdn` argument.",
+			},
+			"fqdn": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ExactlyOneOf: []string{"name", "fqdn"},
+				Description:  "The fully qualified domain name of the new DNS record. This contains the name and the domain of the new DNS record. It conflicts with `name` and `domain` arguments.",
 			},
 			"name": {
 				Type:         schema.TypeString,
 				Optional:     true,
 				RequiredWith: []string{"domain"},
 				ExactlyOneOf: []string{"name", "fqdn"},
-			},
-			"domain": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				RequiredWith: []string{"name"},
-			},
-			"fqdn": {
-				Type:         schema.TypeString,
-				Optional:     true,
-				ExactlyOneOf: []string{"name", "fqdn"},
+				Description:  "The new DNS record resource name. Used in conjunction with `domain`. It conflicts with `fqdn` argument.",
 			},
 			"ttl": {
-				Type:     schema.TypeInt,
-				Optional: true,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Description: "The TTL of the new DNS record.",
+			},
+			"type": {
+				Type:             schema.TypeString,
+				Required:         true,
+				ForceNew:         true,
+				ValidateDiagFunc: validation.ToDiagFunc(validation.StringInSlice(validDnsRecordTypes, false)),
+				Description:      "The DNS record type. Valid options are: `A/AAAA`, `CNAME`, `MX`, `NS`, `SRV`, `SSHFP`, `TXT`.",
 			},
 		},
 	}
 }
 
-func resourceDnsRecordCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsRecordCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	var resourceID int
 	if d.Get("type").(string) == "A/AAAA" {
@@ -126,11 +133,11 @@ func resourceDnsRecordCreate(ctx context.Context, d *schema.ResourceData, m inte
 	}
 	d.SetId(fmt.Sprintf("%v", resourceID))
 
-	return resourceDnsRecordUpdate(ctx, d, m)
+	return resourceDnsRecordUpdate(ctx, d, meta)
 }
 
-func resourceDnsRecordRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsRecordRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -149,8 +156,8 @@ func resourceDnsRecordRead(ctx context.Context, d *schema.ResourceData, m interf
 	return nil
 }
 
-func resourceDnsRecordUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsRecordUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -166,11 +173,11 @@ func resourceDnsRecordUpdate(ctx context.Context, d *schema.ResourceData, m inte
 		}
 	}
 
-	return resourceDnsRecordRead(ctx, d, m)
+	return resourceDnsRecordRead(ctx, d, meta)
 }
 
-func resourceDnsRecordDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceDnsRecordDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -220,7 +227,7 @@ func getDnsResourceRecordParams(d *schema.ResourceData) *entity.DNSResourceRecor
 }
 
 func getDnsResourceRecord(client *client.Client, identifier string) (*entity.DNSResourceRecord, error) {
-	dnsResourceRecords, err := client.DNSResourceRecords.Get()
+	dnsResourceRecords, err := client.DNSResourceRecords.Get(&entity.DNSResourceRecordsParams{})
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +240,7 @@ func getDnsResourceRecord(client *client.Client, identifier string) (*entity.DNS
 }
 
 func getDnsResource(client *client.Client, identifier string) (*entity.DNSResource, error) {
-	dnsResources, err := client.DNSResources.Get()
+	dnsResources, err := client.DNSResources.Get(&entity.DNSResourcesParams{})
 	if err != nil {
 		return nil, err
 	}

@@ -5,25 +5,26 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasVlan() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS network VLANs.",
 		CreateContext: resourceVlanCreate,
 		ReadContext:   resourceVlanRead,
 		UpdateContext: resourceVlanUpdate,
 		DeleteContext: resourceVlanDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
 				idParts := strings.Split(d.Id(), ":")
 				if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
 					return nil, fmt.Errorf("unexpected format of ID (%q), expected FABRIC:VLAN", d.Id())
 				}
-				client := m.(*client.Client)
+				client := meta.(*client.Client)
 				fabric, err := getFabric(client, idParts[0])
 				if err != nil {
 					return nil, err
@@ -45,42 +46,48 @@ func resourceMaasVlan() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"fabric": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+			"dhcp_on": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
+				Description: "Boolean value. Whether or not DHCP should be managed on the new VLAN. This argument is computed if it's not set.",
 			},
-			"vid": {
-				Type:     schema.TypeInt,
-				Required: true,
-				ForceNew: true,
+			"fabric": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The identifier (name or ID) of the fabric for the new VLAN.",
 			},
 			"mtu": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
-			},
-			"dhcp_on": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "The MTU to use on the new VLAN. This argument is computed if it's not set.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The name of the new VLAN. This argument is computed if it's not set.",
 			},
 			"space": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The space of the new VLAN. Passing in an empty string (or the string `undefined`) will cause the VLAN to be placed in the `undefined` space. This argument is computed if it's not set.",
+			},
+			"vid": {
+				Type:        schema.TypeInt,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The traffic segregation ID for the new VLAN.",
 			},
 		},
 	}
 }
 
-func resourceVlanCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVlanCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := getFabric(client, d.Get("fabric").(string))
 	if err != nil {
@@ -92,11 +99,11 @@ func resourceVlanCreate(ctx context.Context, d *schema.ResourceData, m interface
 	}
 	d.SetId(fmt.Sprintf("%v", vlan.ID))
 
-	return resourceVlanUpdate(ctx, d, m)
+	return resourceVlanUpdate(ctx, d, meta)
 }
 
-func resourceVlanRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVlanRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := getFabric(client, d.Get("fabric").(string))
 	if err != nil {
@@ -119,8 +126,8 @@ func resourceVlanRead(ctx context.Context, d *schema.ResourceData, m interface{}
 	return nil
 }
 
-func resourceVlanUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVlanUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := getFabric(client, d.Get("fabric").(string))
 	if err != nil {
@@ -134,11 +141,11 @@ func resourceVlanUpdate(ctx context.Context, d *schema.ResourceData, m interface
 		return diag.FromErr(err)
 	}
 
-	return resourceVlanRead(ctx, d, m)
+	return resourceVlanRead(ctx, d, meta)
 }
 
-func resourceVlanDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVlanDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := getFabric(client, d.Get("fabric").(string))
 	if err != nil {

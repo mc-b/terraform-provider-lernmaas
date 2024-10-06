@@ -6,25 +6,26 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasNetworkInterfacePhysical() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage a physical network interface from an existing MAAS machine.",
 		CreateContext: resourceNetworkInterfacePhysicalCreate,
 		ReadContext:   resourceNetworkInterfacePhysicalRead,
 		UpdateContext: resourceNetworkInterfacePhysicalUpdate,
 		DeleteContext: resourceNetworkInterfacePhysicalDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-				idParts := strings.Split(d.Id(), ":")
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				idParts := strings.Split(d.Id(), "/")
 				if len(idParts) != 2 || idParts[0] == "" || idParts[1] == "" {
-					return nil, fmt.Errorf("unexpected format of ID (%q), expected MACHINE:NETWORK_INTERFACE", d.Id())
+					return nil, fmt.Errorf("unexpected format of ID (%q), expected MACHINE/NETWORK_INTERFACE", d.Id())
 				}
-				client := m.(*client.Client)
+				client := meta.(*client.Client)
 				machine, err := getMachine(client, idParts[0])
 				if err != nil {
 					return nil, err
@@ -33,38 +34,36 @@ func resourceMaasNetworkInterfacePhysical() *schema.Resource {
 				if err != nil {
 					return nil, err
 				}
-				tfState := map[string]interface{}{
-					"id":          fmt.Sprintf("%v", n.ID),
-					"machine":     machine.SystemID,
-					"mac_address": n.MACAddress,
-					"vlan":        fmt.Sprintf("%v", n.VLAN.ID),
-				}
-				if err := setTerraformState(d, tfState); err != nil {
-					return nil, err
-				}
+				d.Set("machine", idParts[0])
+				d.SetId(strconv.Itoa(n.ID))
 				return []*schema.ResourceData{d}, nil
 			},
 		},
 
 		Schema: map[string]*schema.Schema{
-			"machine": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
-			},
 			"mac_address": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The physical network interface MAC address.",
 			},
-			"vlan": {
-				Type:     schema.TypeString,
-				Optional: true,
+			"machine": {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The identifier (system ID, hostname, or FQDN) of the machine with the physical network interface.",
+			},
+			"mtu": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "The MTU of the physical network interface. This argument is computed if it's not set.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The physical network interface name. This argument is computed if it's not set.",
 			},
 			"tags": {
 				Type:     schema.TypeSet,
@@ -73,18 +72,20 @@ func resourceMaasNetworkInterfacePhysical() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "A set of tag names to be assigned to the physical network interface. This argument is computed if it's not set.",
 			},
-			"mtu": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
+			"vlan": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "Database ID of the VLAN the physical network interface is connected to.",
 			},
 		},
 	}
 }
 
-func resourceNetworkInterfacePhysicalCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfacePhysicalCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	machine, err := getMachine(client, d.Get("machine").(string))
 	if err != nil {
@@ -96,17 +97,30 @@ func resourceNetworkInterfacePhysicalCreate(ctx context.Context, d *schema.Resou
 	}
 	if networkInterface == nil {
 		networkInterface, err = client.NetworkInterfaces.CreatePhysical(machine.SystemID, getNetworkInterfacePhysicalParams(d))
-		if err != nil {
-			return diag.FromErr(err)
-		}
+	} else {
+		networkInterface, err = client.NetworkInterface.Update(machine.SystemID, networkInterface.ID, getNetworkInterfaceUpdateParams(d))
 	}
-	d.SetId(fmt.Sprintf("%v", networkInterface.ID))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	d.SetId(strconv.Itoa(networkInterface.ID))
 
-	return resourceNetworkInterfacePhysicalUpdate(ctx, d, m)
+	tfState := map[string]interface{}{
+		"mac_address": networkInterface.MACAddress,
+		"mtu":         networkInterface.EffectiveMTU,
+		"name":        networkInterface.Name,
+		"tags":        networkInterface.Tags,
+		"vlan":        networkInterface.VLAN.ID,
+	}
+	if err := setTerraformState(d, tfState); err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
-func resourceNetworkInterfacePhysicalRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfacePhysicalRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	machine, err := getMachine(client, d.Get("machine").(string))
 	if err != nil {
@@ -122,9 +136,11 @@ func resourceNetworkInterfacePhysicalRead(ctx context.Context, d *schema.Resourc
 	}
 
 	tfState := map[string]interface{}{
-		"name": networkInterface.Name,
-		"tags": networkInterface.Tags,
-		"mtu":  networkInterface.EffectiveMTU,
+		"mac_address": networkInterface.MACAddress,
+		"mtu":         networkInterface.EffectiveMTU,
+		"name":        networkInterface.Name,
+		"tags":        networkInterface.Tags,
+		"vlan":        networkInterface.VLAN.ID,
 	}
 	if err := setTerraformState(d, tfState); err != nil {
 		return diag.FromErr(err)
@@ -133,8 +149,8 @@ func resourceNetworkInterfacePhysicalRead(ctx context.Context, d *schema.Resourc
 	return nil
 }
 
-func resourceNetworkInterfacePhysicalUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfacePhysicalUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	machine, err := getMachine(client, d.Get("machine").(string))
 	if err != nil {
@@ -144,15 +160,27 @@ func resourceNetworkInterfacePhysicalUpdate(ctx context.Context, d *schema.Resou
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	if _, err = client.NetworkInterface.Update(machine.SystemID, id, getNetworkInterfacePhysicalParams(d)); err != nil {
+	networkInterface, err := client.NetworkInterface.Update(machine.SystemID, id, getNetworkInterfaceUpdateParams(d))
+	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	return resourceNetworkInterfacePhysicalRead(ctx, d, m)
+	tfState := map[string]interface{}{
+		"mac_address": networkInterface.MACAddress,
+		"mtu":         networkInterface.EffectiveMTU,
+		"name":        networkInterface.Name,
+		"tags":        networkInterface.Tags,
+		"vlan":        networkInterface.VLAN.ID,
+	}
+	if err := setTerraformState(d, tfState); err != nil {
+		return diag.FromErr(err)
+	}
+
+	return nil
 }
 
-func resourceNetworkInterfacePhysicalDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceNetworkInterfacePhysicalDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	machine, err := getMachine(client, d.Get("machine").(string))
 	if err != nil {
@@ -172,10 +200,20 @@ func resourceNetworkInterfacePhysicalDelete(ctx context.Context, d *schema.Resou
 func getNetworkInterfacePhysicalParams(d *schema.ResourceData) *entity.NetworkInterfacePhysicalParams {
 	return &entity.NetworkInterfacePhysicalParams{
 		MACAddress: d.Get("mac_address").(string),
-		VLAN:       d.Get("vlan").(string),
-		Name:       d.Get("name").(string),
 		MTU:        d.Get("mtu").(int),
+		Name:       d.Get("name").(string),
 		Tags:       strings.Join(convertToStringSlice(d.Get("tags").(*schema.Set).List()), ","),
+		VLAN:       d.Get("vlan").(int),
+	}
+}
+
+func getNetworkInterfaceUpdateParams(d *schema.ResourceData) *entity.NetworkInterfaceUpdateParams {
+	return &entity.NetworkInterfaceUpdateParams{
+		MACAddress: d.Get("mac_address").(string),
+		MTU:        d.Get("mtu").(int),
+		Name:       d.Get("name").(string),
+		Tags:       strings.Join(convertToStringSlice(d.Get("tags").(*schema.Set).List()), ","),
+		VLAN:       d.Get("vlan").(int),
 	}
 }
 
@@ -188,7 +226,7 @@ func findNetworkInterfacePhysical(client *client.Client, machineSystemID string,
 		if n.Type != "physical" {
 			continue
 		}
-		if n.MACAddress == identifier || n.Name == identifier || fmt.Sprintf("%v", n.ID) == identifier {
+		if n.MACAddress == identifier || n.Name == identifier || strconv.Itoa(n.ID) == identifier {
 			return &n, nil
 		}
 	}

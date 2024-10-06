@@ -5,21 +5,22 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/canonical/gomaasclient/client"
+	"github.com/canonical/gomaasclient/entity"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
-	"github.com/ionutbalutoiu/gomaasclient/entity"
 )
 
 func resourceMaasFabric() *schema.Resource {
 	return &schema.Resource{
+		Description:   "Provides a resource to manage MAAS network fabrics.",
 		CreateContext: resourceFabricCreate,
 		ReadContext:   resourceFabricRead,
 		UpdateContext: resourceFabricUpdate,
 		DeleteContext: resourceFabricDelete,
 		Importer: &schema.ResourceImporter{
-			StateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) ([]*schema.ResourceData, error) {
-				client := m.(*client.Client)
+			StateContext: func(ctx context.Context, d *schema.ResourceData, meta interface{}) ([]*schema.ResourceData, error) {
+				client := meta.(*client.Client)
 				fabric, err := getFabric(client, d.Id())
 				if err != nil {
 					return nil, err
@@ -34,15 +35,16 @@ func resourceMaasFabric() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The fabric name.",
 			},
 		},
 	}
 }
 
-func resourceFabricCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceFabricCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := client.Fabrics.Create(getFabricParams(d))
 	if err != nil {
@@ -50,11 +52,11 @@ func resourceFabricCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 	d.SetId(fmt.Sprintf("%v", fabric.ID))
 
-	return resourceFabricUpdate(ctx, d, m)
+	return resourceFabricUpdate(ctx, d, meta)
 }
 
-func resourceFabricRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceFabricRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -67,8 +69,8 @@ func resourceFabricRead(ctx context.Context, d *schema.ResourceData, m interface
 	return nil
 }
 
-func resourceFabricUpdate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceFabricUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {
@@ -78,11 +80,11 @@ func resourceFabricUpdate(ctx context.Context, d *schema.ResourceData, m interfa
 		return diag.FromErr(err)
 	}
 
-	return resourceFabricRead(ctx, d, m)
+	return resourceFabricRead(ctx, d, meta)
 }
 
-func resourceFabricDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceFabricDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	id, err := strconv.Atoi(d.Id())
 	if err != nil {

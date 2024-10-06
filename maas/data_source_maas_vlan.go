@@ -4,46 +4,53 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/canonical/gomaasclient/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/ionutbalutoiu/gomaasclient/client"
 )
 
 func dataSourceMaasVlan() *schema.Resource {
 	return &schema.Resource{
+		Description: "Provides details about an existing MAAS VLAN.",
 		ReadContext: dataSourceVlanRead,
 
 		Schema: map[string]*schema.Schema{
-			"fabric": {
-				Type:     schema.TypeString,
-				Required: true,
+			"dhcp_on": {
+				Type:        schema.TypeBool,
+				Computed:    true,
+				Description: "Boolean value indicating if DHCP is enabled on the VLAN.",
 			},
-			"vlan": {
-				Type:     schema.TypeString,
-				Required: true,
+			"fabric": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The fabric identifier (ID or name) for the VLAN.",
 			},
 			"mtu": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
-			"dhcp_on": {
-				Type:     schema.TypeBool,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The MTU used on the VLAN.",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The VLAN name.",
 			},
 			"space": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The VLAN space.",
+			},
+			"vlan": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The VLAN identifier (ID or traffic segregation ID).",
 			},
 		},
 	}
 }
 
-func dataSourceVlanRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func dataSourceVlanRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	fabric, err := getFabric(client, d.Get("fabric").(string))
 	if err != nil {
