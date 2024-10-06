@@ -34,17 +34,12 @@ func resourceMaasVMInstance() *schema.Resource {
 		},
 
 		Schema: map[string]*schema.Schema{
-			"kvm_no": {
+			"cpu_count": {
 				Type:        schema.TypeInt,
-				Required:    true,
-				ForceNew:    true,
-				Description: "The number of the kvm host.",
-			},
-			"hostname": {
-				Type:        schema.TypeString,
 				Optional:    true,
-				Computed:    true,
-				Description: "The hostname of the MAAS machine to be allocated.",
+				ForceNew:    true,
+				Default:     1,
+				Description: "The number of cores used to allocate the MAAS machine.",
 			},
 			"description": {
 				Type:        schema.TypeString,
@@ -57,12 +52,25 @@ func resourceMaasVMInstance() *schema.Resource {
 				Computed:    true,
 				Description: "The deployed MAAS machine FQDN.",
 			},
-			"cpu_count": {
-				Type:        schema.TypeInt,
+			"hostname": {
+				Type:        schema.TypeString,
 				Optional:    true,
+				Computed:    true,
+				Description: "The hostname of the MAAS machine to be allocated.",
+			},
+			"ip_addresses": {
+				Type:     schema.TypeSet,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "The ip addresses.",
+			},
+			"kvm_no": {
+				Type:        schema.TypeInt,
+				Required:    true,
 				ForceNew:    true,
-				Default:     1,
-				Description: "The number of cores used to allocate the MAAS machine.",
+				Description: "The number of the kvm host.",
 			},
 			"memory": {
 				Type:        schema.TypeInt,
@@ -71,26 +79,19 @@ func resourceMaasVMInstance() *schema.Resource {
 				Default:     2048,
 				Description: "The RAM memory size (in MB) used to allocate the MAAS machine.",
 			},
-			"storage": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				ForceNew:    true,
-				Default:     8,
-				Description: "The VM local storage (in GBytes).",
-			},
-			"zone": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Computed:    true,
-				Default:     nil,
-				Description: "The zone name of the MAAS machine to be allocated.",
-			},
 			"pool": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Computed:    true,
 				Default:     nil,
 				Description: "The resource pool name of the MAAS machine to be allocated.",
+			},
+			"storage": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				ForceNew:    true,
+				Default:     8,
+				Description: "The VM local storage (in GBytes).",
 			},
 			"tags": {
 				Type:     schema.TypeSet,
@@ -107,13 +108,12 @@ func resourceMaasVMInstance() *schema.Resource {
 				ForceNew:    true,
 				Description: "Cloud-init user data script that gets run on the machine once it has deployed. A good practice is to set this with `file.",
 			},
-			"ip_addresses": {
-				Type:     schema.TypeSet,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Description: "The ip addresses.",
+			"zone": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Default:     nil,
+				Description: "The zone name of the MAAS machine to be allocated.",
 			},
 		},
 	}

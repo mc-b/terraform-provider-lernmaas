@@ -15,18 +15,21 @@ func dataSourceMaasMachines() *schema.Resource {
 		Description: "Provides details about all existing MAAS Machines.",
 
 		Schema: map[string]*schema.Schema{
-			"id": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Internal ID.",
-			},
-			"system_id": {
+			"architecture": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The VM host IDs.",
+				Description: "The architecture type of the machine. Defaults to `amd64/generic`.",
+			},
+			"description": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "The descriptions.",
 			},
 			"hostname": {
 				Type:     schema.TypeList,
@@ -36,13 +39,10 @@ func dataSourceMaasMachines() *schema.Resource {
 				},
 				Description: "The VM host names.",
 			},
-			"zone": {
-				Type:     schema.TypeList,
-				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Description: "The deployed MAAS machine zone names.",
+			"id": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Internal ID.",
 			},
 			"pool": {
 				Type:     schema.TypeList,
@@ -60,21 +60,21 @@ func dataSourceMaasMachines() *schema.Resource {
 				},
 				Description: "A power management type (e.g. `ipmi`).",
 			},
-			"architecture": {
+			"system_id": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The architecture type of the machine. Defaults to `amd64/generic`.",
+				Description: "The VM host IDs.",
 			},
-			"description": {
+			"zone": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The descriptions.",
+				Description: "The deployed MAAS machine zone names.",
 			},
 		},
 	}

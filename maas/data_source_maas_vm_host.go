@@ -14,35 +14,35 @@ func dataSourceMaasVMHost() *schema.Resource {
 		Description: "Provides details about an existing MAAS VM hosts.",
 
 		Schema: map[string]*schema.Schema{
+			"cores": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total number of CPU cores.",
+			},
 			"id": {
 				Type:        schema.TypeString,
 				Computed:    true,
 				Description: "The VM host ID.",
 			},
-			"no": {
+			"local_storage": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "The VM host internal ID (for create VM Instances).",
-			},
-			"name": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "The new VM host name. This is computed if it's not set.",
-			},
-			"cores": {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "The VM host total number of CPU cores.",
+				Description: "The VM host total local storage (in bytes).",
 			},
 			"memory": {
 				Type:        schema.TypeInt,
 				Computed:    true,
 				Description: "The VM host total RAM memory (in MB).",
 			},
-			"local_storage": {
+			"name": {
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The new VM host name. This is computed if it's not set.",
+			},
+			"no": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "The VM host total local storage (in bytes).",
+				Description: "The VM host internal ID (for create VM Instances).",
 			},
 		},
 	}

@@ -19,13 +19,13 @@ func dataSourceMaasVMHosts() *schema.Resource {
 				Required:    true,
 				Description: "Internal ID.",
 			},
-			"system_id": {
+			"name": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The VM host IDs.",
+				Description: "The VM host names.",
 			},
 			"no": {
 				Type:     schema.TypeList,
@@ -35,18 +35,18 @@ func dataSourceMaasVMHosts() *schema.Resource {
 				},
 				Description: "The VM host internal IDs (for create VM Instances).",
 			},
-			"name": {
+			"recommended": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host internal ID with the most free memory (for create VM Instances).",
+			},
+			"system_id": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
-				Description: "The VM host names.",
-			},
-			"recommended": {
-				Type:        schema.TypeInt,
-				Computed:    true,
-				Description: "The VM host internal ID with the most free memory (for create VM Instances).",
+				Description: "The VM host IDs.",
 			},
 		},
 	}
