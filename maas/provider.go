@@ -46,6 +46,7 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"maas_device":                     resourceMaasDevice(),
 			"maas_instance":                   resourceMaasInstance(),
+			"maas_vm_instance":                resourceMaasVMInstance(),
 			"maas_vm_host":                    resourceMaasVMHost(),
 			"maas_vm_host_machine":            resourceMaasVMHostMachine(),
 			"maas_machine":                    resourceMaasMachine(),
@@ -75,6 +76,9 @@ func Provider() *schema.Provider {
 			"maas_device":                     dataSourceMaasDevice(),
 			"maas_resource_pool":              dataSourceMaasResourcePool(),
 			"maas_rack_controller":            dataSourceMaasRackController(),
+			"maas_machines": 				   dataSourceMaasMachines(),
+			"maas_vm_host":  				   dataSourceMaasVMHost(),
+			"maas_vm_hosts": 				   dataSourceMaasVMHosts(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
