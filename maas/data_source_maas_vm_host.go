@@ -3,39 +3,46 @@ package maas
 import (
 	"context"
 
+	"github.com/canonical/gomaasclient/client"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/canonical/gomaasclient/client"
 )
 
 func dataSourceMaasVMHost() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceVMHostRead,
+		Description: "Provides details about an existing MAAS VM hosts.",
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Type:     schema.TypeString,
-				Computed: true,
+				Type:        schema.TypeString,
+				Computed:    true,
+				Description: "The VM host ID.",
 			},
 			"no": {
-				Type:     schema.TypeInt,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host internal ID (for create VM Instances).",
 			},
 			"name": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The new VM host name. This is computed if it's not set.",
 			},
 			"cores": {
-				Type:     schema.TypeInt,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total number of CPU cores.",
 			},
 			"memory": {
-				Type:     schema.TypeInt,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total RAM memory (in MB).",
 			},
 			"local_storage": {
-				Type:     schema.TypeInt,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host total local storage (in bytes).",
 			},
 		},
 	}

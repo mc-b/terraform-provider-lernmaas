@@ -1,4 +1,4 @@
 # all kvm hosts
 data "maas_vm_hosts" "vm-hosts" {
-  id  = "rack-01"
+  id = "rack-01"
 }

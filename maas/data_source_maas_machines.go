@@ -12,11 +12,13 @@ import (
 func dataSourceMaasMachines() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceMachinesRead,
+		Description: "Provides details about all existing MAAS Machines.",
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Internal ID.",
 			},
 			"system_id": {
 				Type:     schema.TypeList,
@@ -24,6 +26,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The VM host IDs.",
 			},
 			"hostname": {
 				Type:     schema.TypeList,
@@ -31,6 +34,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The VM host names.",
 			},
 			"zone": {
 				Type:     schema.TypeList,
@@ -38,12 +42,14 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The deployed MAAS machine zone names.",
 			},
 			"pool": {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
-					Type: schema.TypeString,
+					Type:        schema.TypeString,
+					Description: "The deployed MAAS machine pool names.",
 				},
 			},
 			"power_type": {
@@ -52,6 +58,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "A power management type (e.g. `ipmi`).",
 			},
 			"architecture": {
 				Type:     schema.TypeList,
@@ -59,6 +66,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The architecture type of the machine. Defaults to `amd64/generic`.",
 			},
 			"description": {
 				Type:     schema.TypeList,
@@ -66,6 +74,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The descriptions.",
 			},
 		},
 	}

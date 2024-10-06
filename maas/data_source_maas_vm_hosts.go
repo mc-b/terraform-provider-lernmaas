@@ -11,11 +11,13 @@ import (
 func dataSourceMaasVMHosts() *schema.Resource {
 	return &schema.Resource{
 		ReadContext: dataSourceVMHostsRead,
+		Description: "Provides details about all existing MAAS VM hosts.",
 
 		Schema: map[string]*schema.Schema{
 			"id": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "Internal ID.",
 			},
 			"system_id": {
 				Type:     schema.TypeList,
@@ -23,6 +25,7 @@ func dataSourceMaasVMHosts() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The VM host IDs.",
 			},
 			"no": {
 				Type:     schema.TypeList,
@@ -30,6 +33,7 @@ func dataSourceMaasVMHosts() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeInt,
 				},
+				Description: "The VM host internal IDs (for create VM Instances).",
 			},
 			"name": {
 				Type:     schema.TypeList,
@@ -37,10 +41,12 @@ func dataSourceMaasVMHosts() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The VM host names.",
 			},
 			"recommended": {
-				Type:     schema.TypeInt,
-				Computed: true,
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The VM host internal ID with the most free memory (for create VM Instances).",
 			},
 		},
 	}
