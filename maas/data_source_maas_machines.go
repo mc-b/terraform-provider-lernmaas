@@ -49,8 +49,8 @@ func dataSourceMaasMachines() *schema.Resource {
 				Computed: true,
 				Elem: &schema.Schema{
 					Type:        schema.TypeString,
-					Description: "The deployed MAAS machine pool names.",
 				},
+				Description: "The deployed MAAS machine pool names.",
 			},
 			"power_type": {
 				Type:     schema.TypeList,
@@ -80,9 +80,9 @@ func dataSourceMaasMachines() *schema.Resource {
 	}
 }
 
-func dataSourceMachinesRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceMachinesRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	client := m.(*client.Client)
+	client := meta.(*client.Client)
 	machines, err := client.Machines.Get(&entity.MachinesParams{})
 	if err != nil {
 		return diag.FromErr(err)

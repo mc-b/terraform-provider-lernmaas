@@ -31,7 +31,7 @@ data "maas_machines" "machines" {
 - `architecture` (List of String) The architecture type of the machine. Defaults to `amd64/generic`.
 - `description` (List of String) The descriptions.
 - `hostname` (List of String) The VM host names.
-- `pool` (List of String)
+- `pool` (List of String) The deployed MAAS machine pool names.
 - `power_type` (List of String) A power management type (e.g. `ipmi`).
 - `system_id` (List of String) The VM host IDs.
 - `zone` (List of String) The deployed MAAS machine zone names.

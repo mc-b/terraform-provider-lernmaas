@@ -119,9 +119,9 @@ func resourceMaasVMInstance() *schema.Resource {
 	}
 }
 
-func resourceVMInstanceCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func resourceVMInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	client := m.(*client.Client)
+	client := meta.(*client.Client)
 
 	no := d.Get("kvm_no").(int)
 	params := &entity.VMHostMachineParams{
@@ -178,12 +178,12 @@ func resourceVMInstanceCreate(ctx context.Context, d *schema.ResourceData, m int
 	}
 
 	// Read MAAS machine info
-	return resourceInstanceRead(ctx, d, m)
+	return resourceInstanceRead(ctx, d, meta)
 
 }
 
-func resourceVMInstanceDelete(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-	client := m.(*client.Client)
+func resourceVMInstanceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*client.Client)
 
 	// Delete VM MAAS machine
 	err := client.Machine.Delete(d.Id())

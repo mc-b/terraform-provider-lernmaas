@@ -48,9 +48,9 @@ func dataSourceMaasVMHost() *schema.Resource {
 	}
 }
 
-func dataSourceVMHostRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+func dataSourceVMHostRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	vmHost, err := getVMHost(m.(*client.Client), d.Get("name").(string))
+	vmHost, err := getVMHost(meta.(*client.Client), d.Get("name").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}
