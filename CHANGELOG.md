@@ -1,3 +1,16 @@
+## 2.4.2 (Oct 6, 2024)
+
+NEW:
+
+* feat: ephemeral deployment (#218), resource: `maas_vm_instance`
+
+## 2.4.1 (Oct 6, 2024)
+
+NEW:
+
+* data sources: `maas_vm_host, maas_vm_hosts, maas_machines`
+* resource: `maas_vm_instance`
+
 ## 2.4.0 (Sep 6, 2024)
 
 NEW:

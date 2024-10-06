@@ -53,6 +53,7 @@ resource "maas_vm_instance" "order" {
 
 - `cpu_count` (Number) The number of cores used to allocate the MAAS machine.
 - `description` (String) The Description.
+- `ephemeral` (Boolean) Deploy machine in memory
 - `hostname` (String) The hostname of the MAAS machine to be allocated.
 - `memory` (Number) The RAM memory size (in MB) used to allocate the MAAS machine.
 - `pool` (String) The resource pool name of the MAAS machine to be allocated.

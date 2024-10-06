@@ -47,6 +47,12 @@ func resourceMaasVMInstance() *schema.Resource {
 				Computed:    true,
 				Description: "The Description.",
 			},
+			"ephemeral": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				ForceNew:    true,
+				Description: "Deploy machine in memory",
+			},
 			"fqdn": {
 				Type:        schema.TypeString,
 				Computed:    true,
