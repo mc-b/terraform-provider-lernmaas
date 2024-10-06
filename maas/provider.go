@@ -76,9 +76,9 @@ func Provider() *schema.Provider {
 			"maas_device":                     dataSourceMaasDevice(),
 			"maas_resource_pool":              dataSourceMaasResourcePool(),
 			"maas_rack_controller":            dataSourceMaasRackController(),
-			"maas_machines": 				   dataSourceMaasMachines(),
-			"maas_vm_host":  				   dataSourceMaasVMHost(),
-			"maas_vm_hosts": 				   dataSourceMaasVMHosts(),
+			"maas_machines":                   dataSourceMaasMachines(),
+			"maas_vm_host":                    dataSourceMaasVMHost(),
+			"maas_vm_hosts":                   dataSourceMaasVMHosts(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}

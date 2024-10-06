@@ -48,7 +48,7 @@ func dataSourceMaasMachines() *schema.Resource {
 				Type:     schema.TypeList,
 				Computed: true,
 				Elem: &schema.Schema{
-					Type:        schema.TypeString,
+					Type: schema.TypeString,
 				},
 				Description: "The deployed MAAS machine pool names.",
 			},
