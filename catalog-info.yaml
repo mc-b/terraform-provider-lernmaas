@@ -18,6 +18,6 @@ metadata:
     backstage.io/source-location: url:https://github.com/mc-b/terraform-provider-lernmaas
     # backstage.io/techdocs-ref: url:https://github.com/mc-b/terraform-provider-lernmaas
 spec:
-  type: infrastructure
+  type: library
   lifecycle: production
   owner: group:mc-b/mc-b
